@@ -1,5 +1,6 @@
 
 import * as THREE from 'three';
+import * as Nodes from 'three/examples/jsm/nodes/Nodes';
 import { Clock, Material, Mesh, MeshLambertMaterial, MeshStandardMaterial, PerspectiveCamera, PlaneGeometry, PointLight, SphereGeometry, Vector3, WebGLRenderer, PCFShadowMap, Texture, WebGLRenderTarget, TextureLoader, RepeatWrapping } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import * as Stats from 'stats.js'
@@ -66,7 +67,8 @@ export function init() {
   texture.wrapT = RepeatWrapping
 
   const sphere = new SphereGeometry(5,20,20);
-  const material = createMaterial(texture)
+  //const material = createMaterial(texture)
+  const material = createNodeMaterial(texture)
   const mesh = new Mesh(sphere, material)
 
   scene.add(mesh)
@@ -81,6 +83,46 @@ export function init() {
 
   }
   render()
+
+}
+
+function createNodeMaterial(texture: Texture) {
+  let mtl = new Nodes.MeshStandardNodeMaterial();
+  mtl.metalness = 0
+  mtl.roughness = 1
+  let triplanarMapping = new Nodes.FunctionNode([
+          // Reference: https://github.com/keijiro/StandardTriplanar
+          'vec4 triplanar_mapping( sampler2D map, vec3 normal, vec3 position, float scale ) {',
+
+          // Blending factor of triplanar mapping
+          '   vec3 bf = normalize( abs( normal ) );',
+          '   bf /= dot( bf, vec3( 1.0 ) );',
+
+          // Triplanar mapping
+          '   vec2 tx = position.yz * scale;',
+          '   vec2 ty = position.zx * scale;',
+          '   vec2 tz = position.xy * scale;',
+
+          // Base color
+          '   vec4 cx = texture2D(map, tx) * bf.x;',
+          '   vec4 cy = texture2D(map, ty) * bf.y;',
+          '   vec4 cz = texture2D(map, tz) * bf.z;',
+
+          '   return cx + cy + cz;',
+
+          '}'
+  ].join('\n'));
+
+  let scale = new Nodes.FloatNode(.2);
+
+  let nn = new Nodes.TextureNode(texture);
+  let rr = new Nodes.NormalNode(Nodes.NormalNode.WORLD);
+  let pp = new Nodes.PositionNode(Nodes.PositionNode.WORLD);
+
+  var triplanarMappingTexture = new Nodes.FunctionCallNode(triplanarMapping, [nn, rr, pp, scale]);
+  mtl.color = triplanarMappingTexture
+
+  return mtl
 
 }
 
