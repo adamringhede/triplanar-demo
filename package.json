@@ -13,7 +13,7 @@
   "license": "ISC",
   "dependencies": {
     "three": "~0.132.2",
-    "three-shader-graph": "^0.1.10"
+    "three-shader-graph": "^0.1.15"
   },
   "devDependencies": {
     "@types/three": "^0.137.0",

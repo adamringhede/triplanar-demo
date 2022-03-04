@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { Clock, Material, Mesh, MeshLambertMaterial, MeshStandardMaterial, PerspectiveCamera, PlaneGeometry, PointLight, SphereGeometry, Vector3, WebGLRenderer, PCFShadowMap, Texture, WebGLRenderTarget, TextureLoader, RepeatWrapping } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import * as Stats from 'stats.js'
-import { triplanarMapping, varyingVec3, attributes, float, NodeShaderMaterial, standardMaterial, uniformSampler2d } from 'three-shader-graph';
+import { triplanarMapping, varyingVec3, attributes, float, NodeShaderMaterial, standardMaterial, uniformSampler2d, colorToNormal, textureSampler2d } from 'three-shader-graph';
 
 export function init() {
 
@@ -65,9 +65,15 @@ export function init() {
   texture.wrapS = RepeatWrapping
   texture.wrapT = RepeatWrapping
 
+  const normalMap = new TextureLoader().load('assets/bricks_normal.png');
+  normalMap.wrapS = RepeatWrapping
+  normalMap.wrapT = RepeatWrapping
+
   const sphere = new SphereGeometry(5,20,20);
-  const material = createMaterial(texture)
+  const material = createMaterial(texture, normalMap)
   const mesh = new Mesh(sphere, material)
+
+  sphere.computeTangents()
 
   scene.add(mesh)
 
@@ -84,19 +90,19 @@ export function init() {
 
 }
 
-function createMaterial(texture: Texture) {
-  const sampler = uniformSampler2d("map")
+function createMaterial(texture: Texture, normalMap: Texture) {
+  const sampler = textureSampler2d(texture)
+  const normalSampler = textureSampler2d(normalMap)
+  
   const scale = float(0.2)
-  const color = triplanarMapping(sampler, varyingVec3(attributes.normal), varyingVec3(attributes.position), scale).rgb()
+
+  const color = triplanarMapping(sampler, scale).rgb()
+
+  const normal = colorToNormal(triplanarMapping(normalSampler, scale), 0.5)
 
   let material = new NodeShaderMaterial({
-    color: standardMaterial({ color }),
-    uniforms: {
-      time: { value: 0 },
-      map: { value: texture }
-    }
+    color: standardMaterial({ color, normal })
   })
-  material.uniforms.map.value = texture
   return material
 }
 
